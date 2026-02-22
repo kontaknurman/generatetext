@@ -12,20 +12,61 @@
     const AJAX_URL = generatetextData.ajaxUrl;
     const NONCE = generatetextData.nonce;
 
-    // Fixed-position overlay for rewrite notifications (visible during scroll)
+    // Fixed-position overlay with progress bar for rewrite notifications
+    var rewriteProgressTimer = null;
+    var rewriteProgressValue = 0;
+
     function showRewriteOverlay(message) {
         removeRewriteOverlay();
         var overlay = document.createElement('div');
         overlay.id = 'generatetext-rewrite-overlay';
-        overlay.innerHTML = '<span class="generatetext-overlay-spinner"></span> ' + message;
+        overlay.innerHTML =
+            '<div class="generatetext-overlay-content">' +
+                '<span class="generatetext-overlay-spinner"></span>' +
+                '<span class="generatetext-overlay-text">' + message + '</span>' +
+            '</div>' +
+            '<div class="generatetext-progress-bar">' +
+                '<div class="generatetext-progress-fill" id="generatetext-progress-fill"></div>' +
+            '</div>';
         document.body.appendChild(overlay);
+        // Animate progress
+        rewriteProgressValue = 0;
+        var fill = document.getElementById('generatetext-progress-fill');
+        if (fill) {
+            fill.style.width = '0%';
+            rewriteProgressTimer = setInterval(function () {
+                if (rewriteProgressValue < 30) {
+                    rewriteProgressValue += 2;
+                } else if (rewriteProgressValue < 80) {
+                    rewriteProgressValue += 0.3;
+                }
+                fill.style.width = rewriteProgressValue + '%';
+            }, 100);
+        }
+    }
+
+    function finishRewriteOverlay(callback) {
+        if (rewriteProgressTimer) clearInterval(rewriteProgressTimer);
+        var fill = document.getElementById('generatetext-progress-fill');
+        if (fill) {
+            fill.style.transition = 'width 0.3s ease';
+            fill.style.width = '100%';
+        }
+        var textEl = document.querySelector('.generatetext-overlay-text');
+        if (textEl) textEl.textContent = 'Done!';
+        var spinner = document.querySelector('.generatetext-overlay-spinner');
+        if (spinner) spinner.style.display = 'none';
+        setTimeout(function () {
+            removeRewriteOverlay();
+            if (callback) callback();
+        }, 500);
     }
 
     function removeRewriteOverlay() {
+        if (rewriteProgressTimer) clearInterval(rewriteProgressTimer);
+        rewriteProgressTimer = null;
         var existing = document.getElementById('generatetext-rewrite-overlay');
-        if (existing) {
-            existing.remove();
-        }
+        if (existing) existing.remove();
     }
 
     // Helper: AJAX POST
@@ -263,7 +304,6 @@
 
                 apiPost('generatetext_rewrite', { text: selectedText })
                     .then(function (data) {
-                        removeRewriteOverlay();
                         var newValue = insert(
                             value,
                             create({ text: data.rewritten }),
@@ -271,10 +311,12 @@
                             value.end
                         );
                         onChange(newValue);
-                        wp.data.dispatch('core/notices').createSuccessNotice(
-                            'Text rewritten successfully!',
-                            { type: 'snackbar' }
-                        );
+                        finishRewriteOverlay(function () {
+                            wp.data.dispatch('core/notices').createSuccessNotice(
+                                'Text rewritten successfully!',
+                                { type: 'snackbar' }
+                            );
+                        });
                     })
                     .catch(function (err) {
                         removeRewriteOverlay();

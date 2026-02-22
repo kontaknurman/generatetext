@@ -8,21 +8,94 @@
             return;
         }
 
-        // Create a fixed-position overlay notification visible during scroll
+        // ---- Overlay with progress bar ----
+        var progressTimer = null;
+        var progressValue = 0;
+
         function showFixedOverlay(message) {
             removeFixedOverlay();
             var overlay = document.createElement('div');
             overlay.id = 'generatetext-rewrite-overlay';
-            overlay.innerHTML = '<span class="generatetext-overlay-spinner"></span> ' + message;
+            overlay.innerHTML =
+                '<div class="generatetext-overlay-content">' +
+                    '<span class="generatetext-overlay-spinner"></span>' +
+                    '<span class="generatetext-overlay-text">' + message + '</span>' +
+                '</div>' +
+                '<div class="generatetext-progress-bar">' +
+                    '<div class="generatetext-progress-fill" id="generatetext-progress-fill"></div>' +
+                '</div>';
             document.body.appendChild(overlay);
+            startProgress();
             return overlay;
         }
 
-        function removeFixedOverlay() {
-            var existing = document.getElementById('generatetext-rewrite-overlay');
-            if (existing) {
-                existing.remove();
+        function updateOverlayText(message) {
+            var textEl = document.querySelector('.generatetext-overlay-text');
+            if (textEl) textEl.textContent = message;
+        }
+
+        function startProgress() {
+            progressValue = 0;
+            var fill = document.getElementById('generatetext-progress-fill');
+            if (!fill) return;
+            fill.style.width = '0%';
+            // Simulate progress: fast to 30%, slow to 80%
+            progressTimer = setInterval(function () {
+                if (progressValue < 30) {
+                    progressValue += 2;
+                } else if (progressValue < 80) {
+                    progressValue += 0.3;
+                }
+                fill.style.width = progressValue + '%';
+            }, 100);
+        }
+
+        function finishProgress(callback) {
+            if (progressTimer) clearInterval(progressTimer);
+            var fill = document.getElementById('generatetext-progress-fill');
+            if (fill) {
+                fill.style.transition = 'width 0.3s ease';
+                fill.style.width = '100%';
             }
+            setTimeout(function () {
+                if (callback) callback();
+            }, 350);
+        }
+
+        function removeFixedOverlay() {
+            if (progressTimer) clearInterval(progressTimer);
+            progressTimer = null;
+            var existing = document.getElementById('generatetext-rewrite-overlay');
+            if (existing) existing.remove();
+        }
+
+        // ---- Typewriter effect ----
+        function typewriterInsert(text, callback) {
+            // Replace selection with empty first
+            editor.selection.setContent('');
+            var bookmark = editor.selection.getBookmark();
+
+            var i = 0;
+            var chunkSize = Math.max(1, Math.ceil(text.length / 60)); // finish in ~60 steps
+            var interval = setInterval(function () {
+                var end = Math.min(i + chunkSize, text.length);
+                var chunk = text.substring(i, end);
+
+                // Move to bookmark and append
+                editor.selection.moveToBookmark(bookmark);
+                var node = editor.selection.getNode();
+                // Insert at cursor
+                editor.selection.setContent(text.substring(0, end));
+
+                // Update bookmark to end of inserted text
+                bookmark = editor.selection.getBookmark();
+
+                i = end;
+                if (i >= text.length) {
+                    clearInterval(interval);
+                    if (callback) callback();
+                }
+            }, 25);
         }
 
         function doRewrite() {
@@ -36,11 +109,11 @@
                 return;
             }
 
-            // Show fixed overlay notification (visible even when scrolled down)
-            showFixedOverlay('AI is rewriting your text...');
+            // Save selection range before async call
+            var selBookmark = editor.selection.getBookmark(2);
 
-            // Disable button while processing
-            var btn = editor.controlManager && editor.controlManager.get('generatetext_rewrite');
+            // Show overlay with progress bar
+            showFixedOverlay('AI is rewriting your text...');
 
             var data = new FormData();
             data.append('action', 'generatetext_rewrite');
@@ -53,17 +126,28 @@
             })
             .then(function (res) { return res.json(); })
             .then(function (json) {
-                removeFixedOverlay();
-
                 if (json.success && json.data && json.data.rewritten) {
-                    // Preserve selection bookmark, replace content
-                    editor.selection.setContent(json.data.rewritten);
-                    editor.notificationManager.open({
-                        text: 'Text rewritten successfully!',
-                        type: 'success',
-                        timeout: 3000
+                    // Progress to 100%, then start typing
+                    updateOverlayText('Inserting text...');
+                    finishProgress(function () {
+                        // Restore selection and start typewriter
+                        editor.selection.moveToBookmark(selBookmark);
+                        // Hide spinner, keep overlay while typing
+                        var spinner = document.querySelector('.generatetext-overlay-spinner');
+                        if (spinner) spinner.style.display = 'none';
+                        updateOverlayText('AI is typing...');
+
+                        typewriterInsert(json.data.rewritten, function () {
+                            removeFixedOverlay();
+                            editor.notificationManager.open({
+                                text: 'Text rewritten successfully!',
+                                type: 'success',
+                                timeout: 3000
+                            });
+                        });
                     });
                 } else {
+                    removeFixedOverlay();
                     var msg = (json.data && json.data.message) ? json.data.message : 'Rewrite failed.';
                     editor.notificationManager.open({
                         text: msg,

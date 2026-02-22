@@ -55,15 +55,20 @@ i.mce-i-dashicon {
     z-index: 999999;
     background: #1e1e1e;
     color: #fff;
-    padding: 12px 24px;
-    border-radius: 6px;
+    padding: 14px 24px 12px;
+    border-radius: 8px;
     font-size: 14px;
     font-weight: 500;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    min-width: 280px;
+    animation: generatetext-fadein 0.2s ease-out;
+}
+
+.generatetext-overlay-content {
     display: flex;
     align-items: center;
     gap: 10px;
-    animation: generatetext-fadein 0.2s ease-out;
+    margin-bottom: 10px;
 }
 
 @keyframes generatetext-fadein {
@@ -79,8 +84,26 @@ i.mce-i-dashicon {
     border-top-color: #fff;
     border-radius: 50%;
     animation: generatetext-spin 0.6s linear infinite;
+    flex-shrink: 0;
 }
 
 @keyframes generatetext-spin {
     to { transform: rotate(360deg); }
+}
+
+/* Progress bar */
+.generatetext-progress-bar {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.generatetext-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #6366f1, #8b5cf6);
+    border-radius: 2px;
+    transition: width 0.1s linear;
 }
