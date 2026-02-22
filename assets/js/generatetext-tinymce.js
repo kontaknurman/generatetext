@@ -8,6 +8,23 @@
             return;
         }
 
+        // Create a fixed-position overlay notification visible during scroll
+        function showFixedOverlay(message) {
+            removeFixedOverlay();
+            var overlay = document.createElement('div');
+            overlay.id = 'generatetext-rewrite-overlay';
+            overlay.innerHTML = '<span class="generatetext-overlay-spinner"></span> ' + message;
+            document.body.appendChild(overlay);
+            return overlay;
+        }
+
+        function removeFixedOverlay() {
+            var existing = document.getElementById('generatetext-rewrite-overlay');
+            if (existing) {
+                existing.remove();
+            }
+        }
+
         function doRewrite() {
             var selectedText = editor.selection.getContent({ format: 'text' });
             if (!selectedText || selectedText.length < 3) {
@@ -19,12 +36,8 @@
                 return;
             }
 
-            // Show loading notification
-            var loadingNotice = editor.notificationManager.open({
-                text: 'AI is rewriting your text...',
-                type: 'info',
-                timeout: 0
-            });
+            // Show fixed overlay notification (visible even when scrolled down)
+            showFixedOverlay('AI is rewriting your text...');
 
             // Disable button while processing
             var btn = editor.controlManager && editor.controlManager.get('generatetext_rewrite');
@@ -40,7 +53,7 @@
             })
             .then(function (res) { return res.json(); })
             .then(function (json) {
-                loadingNotice.close();
+                removeFixedOverlay();
 
                 if (json.success && json.data && json.data.rewritten) {
                     // Preserve selection bookmark, replace content
@@ -60,7 +73,7 @@
                 }
             })
             .catch(function (err) {
-                loadingNotice.close();
+                removeFixedOverlay();
                 editor.notificationManager.open({
                     text: 'Network error: ' + err.message,
                     type: 'error',

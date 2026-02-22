@@ -12,6 +12,22 @@
     const AJAX_URL = generatetextData.ajaxUrl;
     const NONCE = generatetextData.nonce;
 
+    // Fixed-position overlay for rewrite notifications (visible during scroll)
+    function showRewriteOverlay(message) {
+        removeRewriteOverlay();
+        var overlay = document.createElement('div');
+        overlay.id = 'generatetext-rewrite-overlay';
+        overlay.innerHTML = '<span class="generatetext-overlay-spinner"></span> ' + message;
+        document.body.appendChild(overlay);
+    }
+
+    function removeRewriteOverlay() {
+        var existing = document.getElementById('generatetext-rewrite-overlay');
+        if (existing) {
+            existing.remove();
+        }
+    }
+
     // Helper: AJAX POST
     function apiPost(action, data) {
         const formData = new FormData();
@@ -242,8 +258,12 @@
                 if (loading) return;
                 setLoading(true);
 
+                // Show a fixed overlay notification visible during scroll
+                showRewriteOverlay('AI is rewriting your text...');
+
                 apiPost('generatetext_rewrite', { text: selectedText })
                     .then(function (data) {
+                        removeRewriteOverlay();
                         var newValue = insert(
                             value,
                             create({ text: data.rewritten }),
@@ -251,9 +271,13 @@
                             value.end
                         );
                         onChange(newValue);
+                        wp.data.dispatch('core/notices').createSuccessNotice(
+                            'Text rewritten successfully!',
+                            { type: 'snackbar' }
+                        );
                     })
                     .catch(function (err) {
-                        // Show error via wp.data notices
+                        removeRewriteOverlay();
                         wp.data.dispatch('core/notices').createErrorNotice(
                             'GenerateText: ' + err.message,
                             { type: 'snackbar' }
