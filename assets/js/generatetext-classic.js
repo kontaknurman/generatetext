@@ -86,11 +86,17 @@
                 if (err) { showNotice(err, 'error'); return; }
 
                 if (data.categories && data.categories.length) {
-                    // Uncheck all, then check suggested
-                    $('#categorychecklist input[type=checkbox]').prop('checked', false);
+                    // Uncheck all category checkboxes (both main list and popular list)
+                    $('#categorychecklist input[type=checkbox], #categorychecklist-pop input[type=checkbox]')
+                        .prop('checked', false);
+
+                    // Check suggested categories by matching checkbox value (term_id)
                     data.categories.forEach(function (cat) {
-                        $('#in-category-' + cat.id).prop('checked', true);
+                        $('input[name="post_category[]"][value="' + cat.id + '"]')
+                            .prop('checked', true)
+                            .trigger('change');
                     });
+
                     var names = data.categories.map(function (c) { return c.name; });
                     showNotice('Categories set: ' + names.join(', '));
                 }
