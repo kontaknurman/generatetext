@@ -116,38 +116,7 @@
             });
         });
 
-        // Inline Rewrite for TinyMCE
-        if (typeof tinymce !== 'undefined') {
-            tinymce.PluginManager.add('generatetext_rewrite', function (editor) {
-                editor.addButton('generatetext_rewrite', {
-                    title: 'AI Rewrite',
-                    icon: 'paste',
-                    onclick: function () {
-                        var selectedText = editor.selection.getContent({ format: 'text' });
-                        if (!selectedText || selectedText.length < 3) {
-                            editor.notificationManager.open({ text: 'Select text to rewrite.', type: 'warning' });
-                            return;
-                        }
-
-                        editor.notificationManager.open({ text: 'Rewriting...', type: 'info', timeout: 0 });
-
-                        apiPost('generatetext_rewrite', { text: selectedText }, function (err, data) {
-                            editor.notificationManager.close();
-                            if (err) {
-                                editor.notificationManager.open({ text: err, type: 'error' });
-                                return;
-                            }
-                            editor.selection.setContent(data.rewritten);
-                        });
-                    },
-                });
-            });
-
-            // Add button to TinyMCE toolbar
-            $(document).on('tinymce-editor-setup', function (event, editor) {
-                editor.settings.toolbar1 += ',generatetext_rewrite';
-                editor.settings.plugins += ',generatetext_rewrite';
-            });
-        }
+        // TinyMCE rewrite button is registered via PHP filters (mce_buttons + mce_external_plugins)
+        // See generatetext-tinymce.js
     });
 })(jQuery);

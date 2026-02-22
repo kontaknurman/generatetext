@@ -41,6 +41,10 @@ final class GenerateText
         add_action('enqueue_block_editor_assets', [$this, 'enqueue_editor_assets']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_classic_editor_assets']);
         add_filter('plugin_action_links_' . GENERATETEXT_BASENAME, [$this, 'add_settings_link']);
+
+        // TinyMCE integration for Classic Editor
+        add_filter('mce_buttons', [$this, 'register_tinymce_button']);
+        add_filter('mce_external_plugins', [$this, 'register_tinymce_plugin']);
     }
 
     public function enqueue_editor_assets(): void
@@ -86,6 +90,10 @@ final class GenerateText
             GENERATETEXT_VERSION
         );
 
+        // Print generatetextData early so TinyMCE plugin (loaded via mce_external_plugins) can access it
+        $js_data = $this->get_js_data();
+        wp_add_inline_script('jquery', 'window.generatetextData = ' . wp_json_encode($js_data) . ';');
+
         wp_enqueue_script(
             'generatetext-classic',
             GENERATETEXT_URL . 'assets/js/generatetext-classic.js',
@@ -94,7 +102,7 @@ final class GenerateText
             true
         );
 
-        wp_localize_script('generatetext-classic', 'generatetextData', $this->get_js_data());
+        wp_localize_script('generatetext-classic', 'generatetextData', $js_data);
     }
 
     private function get_js_data(): array
@@ -103,6 +111,18 @@ final class GenerateText
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce'   => wp_create_nonce('generatetext_nonce'),
         ];
+    }
+
+    public function register_tinymce_button(array $buttons): array
+    {
+        $buttons[] = 'generatetext_rewrite';
+        return $buttons;
+    }
+
+    public function register_tinymce_plugin(array $plugins): array
+    {
+        $plugins['generatetext_rewrite'] = GENERATETEXT_URL . 'assets/js/generatetext-tinymce.js';
+        return $plugins;
     }
 
     public function add_settings_link(array $links): array

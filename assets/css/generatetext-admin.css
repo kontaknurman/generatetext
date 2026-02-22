@@ -33,3 +33,15 @@
 #generatetext-metabox .button {
     margin: 4px 4px 4px 0;
 }
+
+/* TinyMCE rewrite button icon */
+.mce-i-dashicon.dashicons-edit-large:before {
+    content: "\f464";
+    font-family: dashicons;
+    font-size: 16px;
+    line-height: 1;
+}
+
+i.mce-i-dashicon {
+    font-style: normal;
+}
