@@ -1,0 +1,35 @@
+/* GenerateText Admin Styles */
+
+.generatetext-btn {
+    width: 100%;
+    margin-bottom: 8px !important;
+    justify-content: center;
+}
+
+.generatetext-description {
+    color: #757575;
+    font-size: 12px;
+    margin: 0 0 8px;
+}
+
+.generatetext-notice {
+    margin: 0 0 10px;
+}
+
+/* Sidebar panel spacing */
+.plugin-sidebar-content .components-panel__body .generatetext-btn {
+    margin-top: 4px;
+}
+
+.plugin-sidebar-content .components-panel__body .components-spinner {
+    margin: 0 4px 0 0;
+}
+
+/* Classic editor metabox */
+#generatetext-metabox .inside {
+    padding: 10px;
+}
+
+#generatetext-metabox .button {
+    margin: 4px 4px 4px 0;
+}
