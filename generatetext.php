@@ -115,12 +115,20 @@ final class GenerateText
 
     public function register_tinymce_button(array $buttons): array
     {
+        $screen = get_current_screen();
+        if (!$screen || $screen->base !== 'post') {
+            return $buttons;
+        }
         $buttons[] = 'generatetext_rewrite';
         return $buttons;
     }
 
     public function register_tinymce_plugin(array $plugins): array
     {
+        $screen = get_current_screen();
+        if (!$screen || $screen->base !== 'post') {
+            return $plugins;
+        }
         $plugins['generatetext_rewrite'] = GENERATETEXT_URL . 'assets/js/generatetext-tinymce.js';
         return $plugins;
     }

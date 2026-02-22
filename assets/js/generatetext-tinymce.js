@@ -3,6 +3,11 @@
 
     tinymce.PluginManager.add('generatetext_rewrite', function (editor) {
 
+        // Only add button to the main content editor, skip excerpt and others
+        if (editor.id !== 'content') {
+            return;
+        }
+
         function doRewrite() {
             var selectedText = editor.selection.getContent({ format: 'text' });
             if (!selectedText || selectedText.length < 3) {
