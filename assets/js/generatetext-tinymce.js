@@ -70,32 +70,19 @@
         }
 
         // ---- Typewriter effect ----
-        function typewriterInsert(text, callback) {
-            // Insert a placeholder span to type into
-            var placeholderId = 'generatetext-typing-' + Date.now();
-            editor.selection.setContent('<span id="' + placeholderId + '"></span>');
-
-            var span = editor.dom.get(placeholderId);
-            if (!span) {
-                // Fallback: insert all at once
-                editor.selection.setContent(text);
-                if (callback) callback();
-                return;
-            }
-
+        function typewriterIntoSpan(span, text, callback) {
+            span.textContent = '';
             var i = 0;
             var chunkSize = Math.max(1, Math.ceil(text.length / 60)); // finish in ~60 steps
             var interval = setInterval(function () {
                 var end = Math.min(i + chunkSize, text.length);
                 span.textContent = text.substring(0, end);
-
                 i = end;
                 if (i >= text.length) {
                     clearInterval(interval);
-                    // Unwrap the span, keep only the text node
+                    // Unwrap span, keep plain text
                     var textNode = editor.getDoc().createTextNode(text);
                     span.parentNode.replaceChild(textNode, span);
-                    // Place cursor at end
                     editor.selection.select(textNode, false);
                     editor.selection.collapse(false);
                     if (callback) callback();
@@ -114,8 +101,12 @@
                 return;
             }
 
-            // Save selection range before async call
-            var selBookmark = editor.selection.getBookmark(2);
+            // Replace selection with placeholder span immediately (before API call)
+            var placeholderId = 'generatetext-typing-' + Date.now();
+            editor.selection.setContent(
+                '<span id="' + placeholderId + '" style="opacity:0.5;background:#f0f0f0">' +
+                editor.dom.encode(selectedText) + '</span>'
+            );
 
             // Show overlay with progress bar
             showFixedOverlay('AI is rewriting your text...');
@@ -131,18 +122,25 @@
             })
             .then(function (res) { return res.json(); })
             .then(function (json) {
+                var span = editor.dom.get(placeholderId);
+
                 if (json.success && json.data && json.data.rewritten) {
-                    // Progress to 100%, then start typing
                     updateOverlayText('Inserting text...');
                     finishProgress(function () {
-                        // Restore selection and start typewriter
-                        editor.selection.moveToBookmark(selBookmark);
-                        // Hide spinner, keep overlay while typing
-                        var spinner = document.querySelector('.generatetext-overlay-spinner');
-                        if (spinner) spinner.style.display = 'none';
+                        if (!span) {
+                            // Fallback if span was lost
+                            editor.insertContent(json.data.rewritten);
+                            removeFixedOverlay();
+                            return;
+                        }
+                        // Reset span style and start typewriter
+                        span.style.opacity = '1';
+                        span.style.background = 'none';
+                        var spinnerEl = document.querySelector('.generatetext-overlay-spinner');
+                        if (spinnerEl) spinnerEl.style.display = 'none';
                         updateOverlayText('AI is typing...');
 
-                        typewriterInsert(json.data.rewritten, function () {
+                        typewriterIntoSpan(span, json.data.rewritten, function () {
                             removeFixedOverlay();
                             editor.notificationManager.open({
                                 text: 'Text rewritten successfully!',
@@ -152,6 +150,11 @@
                         });
                     });
                 } else {
+                    // Error: restore original text
+                    if (span) {
+                        span.style.opacity = '1';
+                        span.style.background = 'none';
+                    }
                     removeFixedOverlay();
                     var msg = (json.data && json.data.message) ? json.data.message : 'Rewrite failed.';
                     editor.notificationManager.open({
@@ -162,6 +165,12 @@
                 }
             })
             .catch(function (err) {
+                // Error: restore original text
+                var span = editor.dom.get(placeholderId);
+                if (span) {
+                    span.style.opacity = '1';
+                    span.style.background = 'none';
+                }
                 removeFixedOverlay();
                 editor.notificationManager.open({
                     text: 'Network error: ' + err.message,
