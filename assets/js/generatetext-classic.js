@@ -102,11 +102,14 @@
                     $('#categorychecklist input[type=checkbox], #categorychecklist-pop input[type=checkbox]')
                         .prop('checked', false);
 
-                    // Check suggested categories by matching checkbox value (term_id)
+                    // Check suggested categories by term_id
                     data.categories.forEach(function (cat) {
-                        $('input[name="post_category[]"][value="' + cat.id + '"]')
-                            .prop('checked', true)
-                            .trigger('change');
+                        var id = parseInt(cat.id, 10);
+                        // Target by checkbox ID (most reliable) and by value attribute
+                        $('#in-category-' + id + ', #in-popular-category-' + id)
+                            .prop('checked', true);
+                        $('input[name="post_category[]"][value="' + id + '"]')
+                            .prop('checked', true);
                     });
 
                     var names = data.categories.map(function (c) { return c.name; });

@@ -47,10 +47,22 @@ final class GenerateText
         add_filter('mce_external_plugins', [$this, 'register_tinymce_plugin']);
     }
 
-    public function enqueue_editor_assets(): void
+    private function is_allowed_post_type(): bool
     {
         $screen = get_current_screen();
         if (!$screen || $screen->base !== 'post') {
+            return false;
+        }
+
+        $settings = get_option('generatetext_settings', []);
+        $allowed = $settings['post_types'] ?? ['post'];
+
+        return in_array($screen->post_type, $allowed, true);
+    }
+
+    public function enqueue_editor_assets(): void
+    {
+        if (!$this->is_allowed_post_type()) {
             return;
         }
 
@@ -75,6 +87,10 @@ final class GenerateText
     public function enqueue_classic_editor_assets(string $hook): void
     {
         if ($hook !== 'post.php' && $hook !== 'post-new.php') {
+            return;
+        }
+
+        if (!$this->is_allowed_post_type()) {
             return;
         }
 
@@ -115,8 +131,7 @@ final class GenerateText
 
     public function register_tinymce_button(array $buttons): array
     {
-        $screen = get_current_screen();
-        if (!$screen || $screen->base !== 'post') {
+        if (!$this->is_allowed_post_type()) {
             return $buttons;
         }
         $buttons[] = 'generatetext_rewrite';
@@ -125,8 +140,7 @@ final class GenerateText
 
     public function register_tinymce_plugin(array $plugins): array
     {
-        $screen = get_current_screen();
-        if (!$screen || $screen->base !== 'post') {
+        if (!$this->is_allowed_post_type()) {
             return $plugins;
         }
         $plugins['generatetext_rewrite'] = GENERATETEXT_URL . 'assets/js/generatetext-tinymce.js';
@@ -146,6 +160,7 @@ final class GenerateText
             'api_key'          => '',
             'model'            => 'claude-sonnet-4-6',
             'max_tokens'       => 1024,
+            'post_types'       => ['post'],
             'prompt_tags'      => 'Based on the following article content, suggest relevant tags. Use existing tags when possible: {existing_tags}. If needed, suggest new tags. Return ONLY a JSON array of tag names, nothing else.\n\nArticle:\n{content}',
             'prompt_category'  => 'Based on the following article content, select the most appropriate categories from this list: {categories}. Return ONLY a JSON array of category names that best match the content.\n\nArticle:\n{content}',
             'prompt_title'     => 'Based on the following article content, generate an SEO-friendly and engaging title. Return ONLY the title text, nothing else.\n\nArticle:\n{content}',

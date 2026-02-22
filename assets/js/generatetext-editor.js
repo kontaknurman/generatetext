@@ -107,9 +107,10 @@
             setLoadingCats(true);
             apiPost('generatetext_categories', { content: content })
                 .then(function (data) {
-                    var catIds = data.categories.map(function (c) { return c.id; });
+                    var catIds = data.categories.map(function (c) { return parseInt(c.id, 10); });
                     var catNames = data.categories.map(function (c) { return c.name; });
-                    editPost({ categories: catIds });
+                    // Use wp.data.dispatch directly to ensure categories are updated
+                    wp.data.dispatch('core/editor').editPost({ categories: catIds });
                     showNotice('Categories set: ' + catNames.join(', '), 'success');
                 })
                 .catch(function (err) { showNotice(err.message, 'error'); })

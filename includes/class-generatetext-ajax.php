@@ -94,7 +94,7 @@ class GenerateText_Ajax
         $cat_map = [];
         foreach ($categories as $cat) {
             $cat_map[mb_strtolower($cat->name)] = [
-                'id'   => $cat->term_id,
+                'id'   => (int) $cat->term_id,
                 'name' => $cat->name,
             ];
         }

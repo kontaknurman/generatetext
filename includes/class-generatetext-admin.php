@@ -38,6 +38,7 @@ class GenerateText_Admin
         add_settings_field('api_key', __('API Key', 'generatetext'), [$this, 'render_api_key_field'], 'generatetext', 'generatetext_api');
         add_settings_field('model', __('Model', 'generatetext'), [$this, 'render_model_field'], 'generatetext', 'generatetext_api');
         add_settings_field('max_tokens', __('Max Tokens', 'generatetext'), [$this, 'render_max_tokens_field'], 'generatetext', 'generatetext_api');
+        add_settings_field('post_types', __('Post Types', 'generatetext'), [$this, 'render_post_types_field'], 'generatetext', 'generatetext_api');
 
         // Prompts Section
         add_settings_section(
@@ -55,10 +56,16 @@ class GenerateText_Admin
 
     public function sanitize_settings(array $input): array
     {
+        $post_types = [];
+        if (!empty($input['post_types']) && is_array($input['post_types'])) {
+            $post_types = array_map('sanitize_text_field', $input['post_types']);
+        }
+
         return [
             'api_key'         => sanitize_text_field($input['api_key'] ?? ''),
             'model'           => sanitize_text_field($input['model'] ?? 'claude-sonnet-4-6'),
             'max_tokens'      => min(max(absint($input['max_tokens'] ?? 1024), 256), 4096),
+            'post_types'      => $post_types,
             'prompt_tags'     => sanitize_textarea_field($input['prompt_tags'] ?? ''),
             'prompt_category' => sanitize_textarea_field($input['prompt_category'] ?? ''),
             'prompt_title'    => sanitize_textarea_field($input['prompt_title'] ?? ''),
@@ -113,6 +120,26 @@ class GenerateText_Admin
             esc_attr($value),
             esc_html__('Maximum tokens for API responses (256-4096).', 'generatetext')
         );
+    }
+
+    public function render_post_types_field(): void
+    {
+        $settings = get_option('generatetext_settings', []);
+        $selected = $settings['post_types'] ?? ['post'];
+        $post_types = get_post_types(['public' => true], 'objects');
+
+        foreach ($post_types as $pt) {
+            if ($pt->name === 'attachment') {
+                continue;
+            }
+            printf(
+                '<label style="display:block;margin-bottom:4px;"><input type="checkbox" name="generatetext_settings[post_types][]" value="%s" %s /> %s</label>',
+                esc_attr($pt->name),
+                checked(in_array($pt->name, $selected, true), true, false),
+                esc_html($pt->label)
+            );
+        }
+        printf('<p class="description">%s</p>', esc_html__('Select which post types will show GenerateText features.', 'generatetext'));
     }
 
     public function render_prompt_tags_field(): void
