@@ -20,10 +20,22 @@
     }
 
     function getEditorContent() {
-        if (typeof tinymce !== 'undefined' && tinymce.activeEditor) {
-            return tinymce.activeEditor.getContent({ format: 'text' });
+        // Try the main content TinyMCE editor specifically (Visual mode)
+        if (typeof tinymce !== 'undefined') {
+            var editor = tinymce.get('content');
+            if (editor && !editor.isHidden()) {
+                var text = editor.getContent({ format: 'text' });
+                if (text && text.trim()) {
+                    return text;
+                }
+            }
         }
-        return $('#content').val() || '';
+        // Fallback to textarea (Text mode, or TinyMCE not ready)
+        var raw = $('#content').val() || '';
+        // Strip HTML tags for plain text
+        var tmp = document.createElement('div');
+        tmp.innerHTML = raw;
+        return tmp.textContent || tmp.innerText || '';
     }
 
     function showNotice(msg, type) {
