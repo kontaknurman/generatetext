@@ -71,28 +71,33 @@
 
         // ---- Typewriter effect ----
         function typewriterInsert(text, callback) {
-            // Replace selection with empty first
-            editor.selection.setContent('');
-            var bookmark = editor.selection.getBookmark();
+            // Insert a placeholder span to type into
+            var placeholderId = 'generatetext-typing-' + Date.now();
+            editor.selection.setContent('<span id="' + placeholderId + '"></span>');
+
+            var span = editor.dom.get(placeholderId);
+            if (!span) {
+                // Fallback: insert all at once
+                editor.selection.setContent(text);
+                if (callback) callback();
+                return;
+            }
 
             var i = 0;
             var chunkSize = Math.max(1, Math.ceil(text.length / 60)); // finish in ~60 steps
             var interval = setInterval(function () {
                 var end = Math.min(i + chunkSize, text.length);
-                var chunk = text.substring(i, end);
-
-                // Move to bookmark and append
-                editor.selection.moveToBookmark(bookmark);
-                var node = editor.selection.getNode();
-                // Insert at cursor
-                editor.selection.setContent(text.substring(0, end));
-
-                // Update bookmark to end of inserted text
-                bookmark = editor.selection.getBookmark();
+                span.textContent = text.substring(0, end);
 
                 i = end;
                 if (i >= text.length) {
                     clearInterval(interval);
+                    // Unwrap the span, keep only the text node
+                    var textNode = editor.getDoc().createTextNode(text);
+                    span.parentNode.replaceChild(textNode, span);
+                    // Place cursor at end
+                    editor.selection.select(textNode, false);
+                    editor.selection.collapse(false);
                     if (callback) callback();
                 }
             }, 25);
