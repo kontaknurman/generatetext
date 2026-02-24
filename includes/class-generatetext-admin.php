@@ -90,9 +90,9 @@ class GenerateText_Admin
             'api_key'         => sanitize_text_field($input['api_key'] ?? ''),
             'model'           => sanitize_text_field($input['model'] ?? 'claude-sonnet-4-6'),
             'openai_api_key'  => sanitize_text_field($input['openai_api_key'] ?? ''),
-            'openai_model'    => sanitize_text_field($input['openai_model'] ?? 'gpt-4o'),
+            'openai_model'    => sanitize_text_field($input['openai_model'] ?? 'gpt-5.2'),
             'kimi_api_key'    => sanitize_text_field($input['kimi_api_key'] ?? ''),
-            'kimi_model'      => sanitize_text_field($input['kimi_model'] ?? 'moonshot-v1-8k'),
+            'kimi_model'      => sanitize_text_field($input['kimi_model'] ?? 'kimi-k2.5'),
             'max_tokens'      => min(max(absint($input['max_tokens'] ?? 1024), 256), 4096),
             'post_types'      => $post_types,
             'feature_tags'    => !empty($input['feature_tags']) ? '1' : '0',
@@ -188,10 +188,10 @@ class GenerateText_Admin
     {
         $value = $this->get_setting('openai_model', 'gpt-4o');
         $models = [
-            'gpt-4o'       => 'GPT-4o (Most capable)',
-            'gpt-4o-mini'  => 'GPT-4o Mini (Fast & affordable)',
-            'gpt-4-turbo'  => 'GPT-4 Turbo',
-            'gpt-3.5-turbo'=> 'GPT-3.5 Turbo (Budget)',
+            'gpt-5.2'     => 'GPT-5.2 (Flagship)',
+            'gpt-5-mini'  => 'GPT-5 Mini (Fast & affordable)',
+            'gpt-4o'      => 'GPT-4o (Previous gen)',
+            'gpt-4o-mini' => 'GPT-4o Mini (Budget)',
         ];
 
         echo '<select name="generatetext_settings[openai_model]">';
@@ -221,11 +221,12 @@ class GenerateText_Admin
 
     public function render_kimi_model_field(): void
     {
-        $value = $this->get_setting('kimi_model', 'moonshot-v1-8k');
+        $value = $this->get_setting('kimi_model', 'kimi-k2.5');
         $models = [
-            'moonshot-v1-8k'   => 'Moonshot v1 8K (Fast)',
-            'moonshot-v1-32k'  => 'Moonshot v1 32K (Balanced)',
-            'moonshot-v1-128k' => 'Moonshot v1 128K (Long context)',
+            'kimi-k2.5'        => 'Kimi K2.5 (Latest, multimodal)',
+            'kimi-k2'          => 'Kimi K2 (1T MoE, agentic)',
+            'moonshot-v1-128k' => 'Moonshot v1 128K (Legacy)',
+            'moonshot-v1-8k'   => 'Moonshot v1 8K (Legacy, fast)',
         ];
 
         echo '<select name="generatetext_settings[kimi_model]">';

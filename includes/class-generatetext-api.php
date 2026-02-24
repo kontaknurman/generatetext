@@ -14,7 +14,7 @@ class GenerateText_API
             'timeout' => 60,
         ],
         'kimi' => [
-            'url'     => 'https://api.moonshot.cn/v1/chat/completions',
+            'url'     => 'https://api.moonshot.ai/v1/chat/completions',
             'timeout' => 60,
         ],
     ];
@@ -34,11 +34,11 @@ class GenerateText_API
         match ($this->provider) {
             'openai' => [
                 $this->api_key = sanitize_text_field($settings['openai_api_key'] ?? ''),
-                $this->model   = sanitize_text_field($settings['openai_model'] ?? 'gpt-4o'),
+                $this->model   = sanitize_text_field($settings['openai_model'] ?? 'gpt-5.2'),
             ],
             'kimi' => [
                 $this->api_key = sanitize_text_field($settings['kimi_api_key'] ?? ''),
-                $this->model   = sanitize_text_field($settings['kimi_model'] ?? 'moonshot-v1-8k'),
+                $this->model   = sanitize_text_field($settings['kimi_model'] ?? 'kimi-k2.5'),
             ],
             default => [
                 $this->api_key = sanitize_text_field($settings['api_key'] ?? ''),

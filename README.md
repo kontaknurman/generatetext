@@ -16,8 +16,8 @@ Each feature can be individually enabled or disabled from the settings page.
 | Provider | Models | API Docs |
 |----------|--------|----------|
 | **Claude (Anthropic)** | Opus 4.6, Sonnet 4.6, Haiku 4.5 | console.anthropic.com |
-| **OpenAI** | GPT-4o, GPT-4o Mini, GPT-4 Turbo, GPT-3.5 Turbo | platform.openai.com |
-| **Kimi (Moonshot AI)** | Moonshot v1 8K/32K/128K | platform.moonshot.cn |
+| **OpenAI** | GPT-5.2, GPT-5 Mini, GPT-4o, GPT-4o Mini | platform.openai.com |
+| **Kimi (Moonshot AI)** | Kimi K2.5, Kimi K2, Moonshot v1 128K/8K | platform.moonshot.ai |
 
 ## Setup
 
