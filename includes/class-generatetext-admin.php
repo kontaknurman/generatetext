@@ -142,8 +142,7 @@ class GenerateText_Admin
     {
         $value = $this->get_setting('api_key');
         printf(
-            '<tr class="gt-provider-row gt-provider-claude"><td colspan="2" style="padding:0"></td></tr>
-            <input type="password" name="generatetext_settings[api_key]" value="%s" class="regular-text" autocomplete="off" />
+            '<input type="password" name="generatetext_settings[api_key]" value="%s" class="regular-text" autocomplete="off" />
             <p class="description">%s</p>',
             esc_attr($value),
             esc_html__('Your Anthropic API key from console.anthropic.com', 'generatetext')
