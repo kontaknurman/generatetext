@@ -47,14 +47,29 @@
 
     // Add meta box via JS (for classic editor)
     $(document).ready(function () {
+        var features = (generatetextData && generatetextData.features) ? generatetextData.features : {};
+
+        var buttons = '';
+        if (features.tags !== false) {
+            buttons += '<button type="button" class="button generatetext-btn" id="gt-gen-tags">Generate Tags</button> ';
+        }
+        if (features.category !== false) {
+            buttons += '<button type="button" class="button generatetext-btn" id="gt-suggest-cat">Suggest Category</button> ';
+        }
+        if (features.title !== false) {
+            buttons += '<button type="button" class="button generatetext-btn" id="gt-gen-title">Generate Title</button>';
+        }
+
+        if (!buttons) {
+            return; // All features disabled, don't render metabox
+        }
+
         var $metabox = $(
             '<div id="generatetext-metabox" class="postbox">' +
             '<h2 class="hndle"><span>GenerateText AI</span></h2>' +
             '<div class="inside">' +
             '<p class="generatetext-description">AI-powered content tools</p>' +
-            '<button type="button" class="button generatetext-btn" id="gt-gen-tags">Generate Tags</button> ' +
-            '<button type="button" class="button generatetext-btn" id="gt-suggest-cat">Suggest Category</button> ' +
-            '<button type="button" class="button generatetext-btn" id="gt-gen-title">Generate Title</button>' +
+            buttons +
             '</div></div>'
         );
 

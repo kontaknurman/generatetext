@@ -123,15 +123,26 @@ final class GenerateText
 
     private function get_js_data(): array
     {
+        $settings = get_option('generatetext_settings', []);
         return [
-            'ajaxUrl' => admin_url('admin-ajax.php'),
-            'nonce'   => wp_create_nonce('generatetext_nonce'),
+            'ajaxUrl'  => admin_url('admin-ajax.php'),
+            'nonce'    => wp_create_nonce('generatetext_nonce'),
+            'features' => [
+                'tags'     => ($settings['feature_tags'] ?? '1') === '1',
+                'category' => ($settings['feature_category'] ?? '1') === '1',
+                'title'    => ($settings['feature_title'] ?? '1') === '1',
+                'rewrite'  => ($settings['feature_rewrite'] ?? '1') === '1',
+            ],
         ];
     }
 
     public function register_tinymce_button(array $buttons): array
     {
         if (!$this->is_allowed_post_type()) {
+            return $buttons;
+        }
+        $settings = get_option('generatetext_settings', []);
+        if (($settings['feature_rewrite'] ?? '1') !== '1') {
             return $buttons;
         }
         $buttons[] = 'generatetext_rewrite';
@@ -141,6 +152,10 @@ final class GenerateText
     public function register_tinymce_plugin(array $plugins): array
     {
         if (!$this->is_allowed_post_type()) {
+            return $plugins;
+        }
+        $settings = get_option('generatetext_settings', []);
+        if (($settings['feature_rewrite'] ?? '1') !== '1') {
             return $plugins;
         }
         $plugins['generatetext_rewrite'] = GENERATETEXT_URL . 'assets/js/generatetext-tinymce.js';
@@ -157,10 +172,19 @@ final class GenerateText
     public static function activate(): void
     {
         $defaults = [
+            'api_provider'     => 'claude',
             'api_key'          => '',
             'model'            => 'claude-sonnet-4-6',
+            'openai_api_key'   => '',
+            'openai_model'     => 'gpt-4o',
+            'kimi_api_key'     => '',
+            'kimi_model'       => 'moonshot-v1-8k',
             'max_tokens'       => 1024,
             'post_types'       => ['post'],
+            'feature_tags'     => '1',
+            'feature_category' => '1',
+            'feature_title'    => '1',
+            'feature_rewrite'  => '1',
             'prompt_tags'      => 'Based on the following article content, suggest relevant tags. Use existing tags when possible: {existing_tags}. If needed, suggest new tags. Return ONLY a JSON array of tag names, nothing else.\n\nArticle:\n{content}',
             'prompt_category'  => 'Based on the following article content, select the most appropriate categories from this list: {categories}. Return ONLY a JSON array of category names that best match the content.\n\nArticle:\n{content}',
             'prompt_title'     => 'Based on the following article content, generate an SEO-friendly and engaging title. Return ONLY the title text, nothing else.\n\nArticle:\n{content}',

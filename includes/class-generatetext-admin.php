@@ -31,14 +31,32 @@ class GenerateText_Admin
         add_settings_section(
             'generatetext_api',
             __('API Configuration', 'generatetext'),
-            fn() => printf('<p>%s</p>', esc_html__('Configure your Claude API connection.', 'generatetext')),
+            fn() => printf('<p>%s</p>', esc_html__('Configure your AI API connection. Choose a provider and enter the API key.', 'generatetext')),
             'generatetext'
         );
 
-        add_settings_field('api_key', __('API Key', 'generatetext'), [$this, 'render_api_key_field'], 'generatetext', 'generatetext_api');
-        add_settings_field('model', __('Model', 'generatetext'), [$this, 'render_model_field'], 'generatetext', 'generatetext_api');
+        add_settings_field('api_provider', __('API Provider', 'generatetext'), [$this, 'render_provider_field'], 'generatetext', 'generatetext_api');
+        add_settings_field('api_key', __('Claude API Key', 'generatetext'), [$this, 'render_api_key_field'], 'generatetext', 'generatetext_api');
+        add_settings_field('model', __('Claude Model', 'generatetext'), [$this, 'render_model_field'], 'generatetext', 'generatetext_api');
+        add_settings_field('openai_api_key', __('OpenAI API Key', 'generatetext'), [$this, 'render_openai_api_key_field'], 'generatetext', 'generatetext_api');
+        add_settings_field('openai_model', __('OpenAI Model', 'generatetext'), [$this, 'render_openai_model_field'], 'generatetext', 'generatetext_api');
+        add_settings_field('kimi_api_key', __('Kimi API Key', 'generatetext'), [$this, 'render_kimi_api_key_field'], 'generatetext', 'generatetext_api');
+        add_settings_field('kimi_model', __('Kimi Model', 'generatetext'), [$this, 'render_kimi_model_field'], 'generatetext', 'generatetext_api');
         add_settings_field('max_tokens', __('Max Tokens', 'generatetext'), [$this, 'render_max_tokens_field'], 'generatetext', 'generatetext_api');
         add_settings_field('post_types', __('Post Types', 'generatetext'), [$this, 'render_post_types_field'], 'generatetext', 'generatetext_api');
+
+        // Features Section
+        add_settings_section(
+            'generatetext_features',
+            __('Feature Toggles', 'generatetext'),
+            fn() => printf('<p>%s</p>', esc_html__('Enable or disable individual features.', 'generatetext')),
+            'generatetext'
+        );
+
+        add_settings_field('feature_tags', __('Generate Tags', 'generatetext'), [$this, 'render_feature_tags_field'], 'generatetext', 'generatetext_features');
+        add_settings_field('feature_category', __('Suggest Category', 'generatetext'), [$this, 'render_feature_category_field'], 'generatetext', 'generatetext_features');
+        add_settings_field('feature_title', __('Generate Title', 'generatetext'), [$this, 'render_feature_title_field'], 'generatetext', 'generatetext_features');
+        add_settings_field('feature_rewrite', __('Inline Rewrite', 'generatetext'), [$this, 'render_feature_rewrite_field'], 'generatetext', 'generatetext_features');
 
         // Prompts Section
         add_settings_section(
@@ -61,11 +79,26 @@ class GenerateText_Admin
             $post_types = array_map('sanitize_text_field', $input['post_types']);
         }
 
+        $valid_providers = ['claude', 'openai', 'kimi'];
+        $provider = sanitize_text_field($input['api_provider'] ?? 'claude');
+        if (!in_array($provider, $valid_providers, true)) {
+            $provider = 'claude';
+        }
+
         return [
+            'api_provider'    => $provider,
             'api_key'         => sanitize_text_field($input['api_key'] ?? ''),
             'model'           => sanitize_text_field($input['model'] ?? 'claude-sonnet-4-6'),
+            'openai_api_key'  => sanitize_text_field($input['openai_api_key'] ?? ''),
+            'openai_model'    => sanitize_text_field($input['openai_model'] ?? 'gpt-4o'),
+            'kimi_api_key'    => sanitize_text_field($input['kimi_api_key'] ?? ''),
+            'kimi_model'      => sanitize_text_field($input['kimi_model'] ?? 'moonshot-v1-8k'),
             'max_tokens'      => min(max(absint($input['max_tokens'] ?? 1024), 256), 4096),
             'post_types'      => $post_types,
+            'feature_tags'    => !empty($input['feature_tags']) ? '1' : '0',
+            'feature_category'=> !empty($input['feature_category']) ? '1' : '0',
+            'feature_title'   => !empty($input['feature_title']) ? '1' : '0',
+            'feature_rewrite' => !empty($input['feature_rewrite']) ? '1' : '0',
             'prompt_tags'     => sanitize_textarea_field($input['prompt_tags'] ?? ''),
             'prompt_category' => sanitize_textarea_field($input['prompt_category'] ?? ''),
             'prompt_title'    => sanitize_textarea_field($input['prompt_title'] ?? ''),
@@ -79,14 +112,41 @@ class GenerateText_Admin
         return $settings[$key] ?? $default;
     }
 
+    // ---- Provider field ----
+
+    public function render_provider_field(): void
+    {
+        $value = $this->get_setting('api_provider', 'claude');
+        $providers = [
+            'claude' => 'Claude (Anthropic)',
+            'openai' => 'OpenAI',
+            'kimi'   => 'Kimi (Moonshot AI)',
+        ];
+
+        echo '<select name="generatetext_settings[api_provider]" id="gt-api-provider">';
+        foreach ($providers as $id => $label) {
+            printf(
+                '<option value="%s" %s>%s</option>',
+                esc_attr($id),
+                selected($value, $id, false),
+                esc_html($label)
+            );
+        }
+        echo '</select>';
+        printf('<p class="description">%s</p>', esc_html__('Select which AI provider to use for all features.', 'generatetext'));
+    }
+
+    // ---- Claude fields ----
+
     public function render_api_key_field(): void
     {
         $value = $this->get_setting('api_key');
         printf(
-            '<input type="password" name="generatetext_settings[api_key]" value="%s" class="regular-text" autocomplete="off" />
+            '<tr class="gt-provider-row gt-provider-claude"><td colspan="2" style="padding:0"></td></tr>
+            <input type="password" name="generatetext_settings[api_key]" value="%s" class="regular-text" autocomplete="off" />
             <p class="description">%s</p>',
             esc_attr($value),
-            esc_html__('Your Anthropic API key. Get one at console.anthropic.com.', 'generatetext')
+            esc_html__('Your Anthropic API key from console.anthropic.com', 'generatetext')
         );
     }
 
@@ -110,6 +170,77 @@ class GenerateText_Admin
         }
         echo '</select>';
     }
+
+    // ---- OpenAI fields ----
+
+    public function render_openai_api_key_field(): void
+    {
+        $value = $this->get_setting('openai_api_key');
+        printf(
+            '<input type="password" name="generatetext_settings[openai_api_key]" value="%s" class="regular-text" autocomplete="off" />
+            <p class="description">%s</p>',
+            esc_attr($value),
+            esc_html__('Your OpenAI API key from platform.openai.com', 'generatetext')
+        );
+    }
+
+    public function render_openai_model_field(): void
+    {
+        $value = $this->get_setting('openai_model', 'gpt-4o');
+        $models = [
+            'gpt-4o'       => 'GPT-4o (Most capable)',
+            'gpt-4o-mini'  => 'GPT-4o Mini (Fast & affordable)',
+            'gpt-4-turbo'  => 'GPT-4 Turbo',
+            'gpt-3.5-turbo'=> 'GPT-3.5 Turbo (Budget)',
+        ];
+
+        echo '<select name="generatetext_settings[openai_model]">';
+        foreach ($models as $id => $label) {
+            printf(
+                '<option value="%s" %s>%s</option>',
+                esc_attr($id),
+                selected($value, $id, false),
+                esc_html($label)
+            );
+        }
+        echo '</select>';
+    }
+
+    // ---- Kimi fields ----
+
+    public function render_kimi_api_key_field(): void
+    {
+        $value = $this->get_setting('kimi_api_key');
+        printf(
+            '<input type="password" name="generatetext_settings[kimi_api_key]" value="%s" class="regular-text" autocomplete="off" />
+            <p class="description">%s</p>',
+            esc_attr($value),
+            esc_html__('Your Kimi API key from platform.moonshot.cn', 'generatetext')
+        );
+    }
+
+    public function render_kimi_model_field(): void
+    {
+        $value = $this->get_setting('kimi_model', 'moonshot-v1-8k');
+        $models = [
+            'moonshot-v1-8k'   => 'Moonshot v1 8K (Fast)',
+            'moonshot-v1-32k'  => 'Moonshot v1 32K (Balanced)',
+            'moonshot-v1-128k' => 'Moonshot v1 128K (Long context)',
+        ];
+
+        echo '<select name="generatetext_settings[kimi_model]">';
+        foreach ($models as $id => $label) {
+            printf(
+                '<option value="%s" %s>%s</option>',
+                esc_attr($id),
+                selected($value, $id, false),
+                esc_html($label)
+            );
+        }
+        echo '</select>';
+    }
+
+    // ---- Common fields ----
 
     public function render_max_tokens_field(): void
     {
@@ -141,6 +272,41 @@ class GenerateText_Admin
         }
         printf('<p class="description">%s</p>', esc_html__('Select which post types will show GenerateText features.', 'generatetext'));
     }
+
+    // ---- Feature toggle fields ----
+
+    public function render_feature_tags_field(): void
+    {
+        $this->render_toggle('feature_tags', __('Enable AI tag generation', 'generatetext'));
+    }
+
+    public function render_feature_category_field(): void
+    {
+        $this->render_toggle('feature_category', __('Enable AI category suggestion', 'generatetext'));
+    }
+
+    public function render_feature_title_field(): void
+    {
+        $this->render_toggle('feature_title', __('Enable AI title generation', 'generatetext'));
+    }
+
+    public function render_feature_rewrite_field(): void
+    {
+        $this->render_toggle('feature_rewrite', __('Enable inline text rewrite in editor toolbar', 'generatetext'));
+    }
+
+    private function render_toggle(string $key, string $label): void
+    {
+        $value = $this->get_setting($key, '1');
+        printf(
+            '<label><input type="checkbox" name="generatetext_settings[%s]" value="1" %s /> %s</label>',
+            esc_attr($key),
+            checked($value, '1', false),
+            esc_html($label)
+        );
+    }
+
+    // ---- Prompt fields ----
 
     public function render_prompt_tags_field(): void
     {
@@ -175,6 +341,8 @@ class GenerateText_Admin
         );
     }
 
+    // ---- Settings page ----
+
     public function render_settings_page(): void
     {
         if (!current_user_can('manage_options')) {
@@ -191,6 +359,42 @@ class GenerateText_Admin
                 ?>
             </form>
         </div>
+
+        <script>
+        (function() {
+            var providerSelect = document.getElementById('gt-api-provider');
+            if (!providerSelect) return;
+
+            function toggleProviderFields() {
+                var provider = providerSelect.value;
+                var rows = document.querySelectorAll('.form-table tr');
+                rows.forEach(function(row) {
+                    var label = row.querySelector('th');
+                    if (!label) return;
+                    var text = label.textContent.trim();
+
+                    // Claude fields
+                    if (text === '<?php echo esc_js(__('Claude API Key', 'generatetext')); ?>' ||
+                        text === '<?php echo esc_js(__('Claude Model', 'generatetext')); ?>') {
+                        row.style.display = (provider === 'claude') ? '' : 'none';
+                    }
+                    // OpenAI fields
+                    if (text === '<?php echo esc_js(__('OpenAI API Key', 'generatetext')); ?>' ||
+                        text === '<?php echo esc_js(__('OpenAI Model', 'generatetext')); ?>') {
+                        row.style.display = (provider === 'openai') ? '' : 'none';
+                    }
+                    // Kimi fields
+                    if (text === '<?php echo esc_js(__('Kimi API Key', 'generatetext')); ?>' ||
+                        text === '<?php echo esc_js(__('Kimi Model', 'generatetext')); ?>') {
+                        row.style.display = (provider === 'kimi') ? '' : 'none';
+                    }
+                });
+            }
+
+            providerSelect.addEventListener('change', toggleProviderFields);
+            toggleProviderFields();
+        })();
+        </script>
         <?php
     }
 }

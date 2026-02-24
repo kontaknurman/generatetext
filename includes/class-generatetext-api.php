@@ -4,20 +4,47 @@ defined('ABSPATH') || exit;
 
 class GenerateText_API
 {
-    private const API_URL = 'https://api.anthropic.com/v1/messages';
-    private const API_VERSION = '2023-06-01';
-    private const TIMEOUT = 60;
+    private const PROVIDERS = [
+        'claude' => [
+            'url'     => 'https://api.anthropic.com/v1/messages',
+            'timeout' => 60,
+        ],
+        'openai' => [
+            'url'     => 'https://api.openai.com/v1/chat/completions',
+            'timeout' => 60,
+        ],
+        'kimi' => [
+            'url'     => 'https://api.moonshot.cn/v1/chat/completions',
+            'timeout' => 60,
+        ],
+    ];
 
+    private string $provider;
     private string $api_key;
     private string $model;
     private int $max_tokens;
 
     public function __construct()
     {
-        $settings = get_option('generatetext_settings', []);
-        $this->api_key    = sanitize_text_field($settings['api_key'] ?? '');
-        $this->model      = sanitize_text_field($settings['model'] ?? 'claude-sonnet-4-6');
+        $settings        = get_option('generatetext_settings', []);
+        $this->provider  = sanitize_text_field($settings['api_provider'] ?? 'claude');
         $this->max_tokens = absint($settings['max_tokens'] ?? 1024);
+
+        // Load provider-specific API key and model
+        match ($this->provider) {
+            'openai' => [
+                $this->api_key = sanitize_text_field($settings['openai_api_key'] ?? ''),
+                $this->model   = sanitize_text_field($settings['openai_model'] ?? 'gpt-4o'),
+            ],
+            'kimi' => [
+                $this->api_key = sanitize_text_field($settings['kimi_api_key'] ?? ''),
+                $this->model   = sanitize_text_field($settings['kimi_model'] ?? 'moonshot-v1-8k'),
+            ],
+            default => [
+                $this->api_key = sanitize_text_field($settings['api_key'] ?? ''),
+                $this->model   = sanitize_text_field($settings['model'] ?? 'claude-sonnet-4-6'),
+            ],
+        };
     }
 
     public function is_configured(): bool
@@ -26,7 +53,7 @@ class GenerateText_API
     }
 
     /**
-     * Send a message to the Claude API.
+     * Send a message to the configured AI provider.
      *
      * @return array{success: bool, data?: string, error?: string}
      */
@@ -36,6 +63,21 @@ class GenerateText_API
             return ['success' => false, 'error' => __('API key not configured.', 'generatetext')];
         }
 
+        if (!isset(self::PROVIDERS[$this->provider])) {
+            return ['success' => false, 'error' => __('Invalid API provider.', 'generatetext')];
+        }
+
+        return match ($this->provider) {
+            'openai', 'kimi' => $this->send_openai_compatible($system_prompt, $user_message),
+            default          => $this->send_claude($system_prompt, $user_message),
+        };
+    }
+
+    /**
+     * Send message via Claude (Anthropic) API.
+     */
+    private function send_claude(string $system_prompt, string $user_message): array
+    {
         $body = [
             'model'      => $this->model,
             'max_tokens' => $this->max_tokens,
@@ -48,12 +90,12 @@ class GenerateText_API
             $body['system'] = $system_prompt;
         }
 
-        $response = wp_remote_post(self::API_URL, [
-            'timeout' => self::TIMEOUT,
+        $response = wp_remote_post(self::PROVIDERS['claude']['url'], [
+            'timeout' => self::PROVIDERS['claude']['timeout'],
             'headers' => [
                 'Content-Type'      => 'application/json',
                 'x-api-key'         => $this->api_key,
-                'anthropic-version' => self::API_VERSION,
+                'anthropic-version' => '2023-06-01',
             ],
             'body' => wp_json_encode($body),
         ]);
@@ -71,6 +113,50 @@ class GenerateText_API
         }
 
         $text = $body['content'][0]['text'] ?? '';
+        return ['success' => true, 'data' => $text];
+    }
+
+    /**
+     * Send message via OpenAI-compatible API (OpenAI, Kimi/Moonshot).
+     */
+    private function send_openai_compatible(string $system_prompt, string $user_message): array
+    {
+        $messages = [];
+        if (!empty($system_prompt)) {
+            $messages[] = ['role' => 'system', 'content' => $system_prompt];
+        }
+        $messages[] = ['role' => 'user', 'content' => $user_message];
+
+        $body = [
+            'model'      => $this->model,
+            'max_tokens' => $this->max_tokens,
+            'messages'   => $messages,
+        ];
+
+        $provider_config = self::PROVIDERS[$this->provider];
+
+        $response = wp_remote_post($provider_config['url'], [
+            'timeout' => $provider_config['timeout'],
+            'headers' => [
+                'Content-Type'  => 'application/json',
+                'Authorization' => 'Bearer ' . $this->api_key,
+            ],
+            'body' => wp_json_encode($body),
+        ]);
+
+        if (is_wp_error($response)) {
+            return ['success' => false, 'error' => $response->get_error_message()];
+        }
+
+        $code = wp_remote_retrieve_response_code($response);
+        $body = json_decode(wp_remote_retrieve_body($response), true);
+
+        if ($code !== 200) {
+            $error_msg = $body['error']['message'] ?? __('Unknown API error.', 'generatetext');
+            return ['success' => false, 'error' => sprintf('[%d] %s', $code, $error_msg)];
+        }
+
+        $text = $body['choices'][0]['message']['content'] ?? '';
         return ['success' => true, 'data' => $text];
     }
 

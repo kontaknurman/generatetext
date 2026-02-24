@@ -11,6 +11,7 @@
 
     const AJAX_URL = generatetextData.ajaxUrl;
     const NONCE = generatetextData.nonce;
+    const FEATURES = generatetextData.features || {};
 
     // Fixed-position overlay with progress bar for rewrite notifications
     var rewriteProgressTimer = null;
@@ -216,7 +217,7 @@
                     notice.message
                 ),
                 // Tags
-                el(
+                FEATURES.tags !== false ? el(
                     PanelBody,
                     { title: 'Generate Tags', initialOpen: true },
                     el('p', { className: 'generatetext-description' }, 'Generate relevant tags based on your article content. Uses existing tags when possible.'),
@@ -231,9 +232,9 @@
                         loadingTags ? el(Spinner, null) : null,
                         loadingTags ? ' Generating...' : 'Generate Tags'
                     )
-                ),
+                ) : null,
                 // Categories
-                el(
+                FEATURES.category !== false ? el(
                     PanelBody,
                     { title: 'Suggest Category', initialOpen: true },
                     el('p', { className: 'generatetext-description' }, 'Suggest the best category from your existing categories.'),
@@ -248,9 +249,9 @@
                         loadingCats ? el(Spinner, null) : null,
                         loadingCats ? ' Analyzing...' : 'Suggest Category'
                     )
-                ),
+                ) : null,
                 // Title
-                el(
+                FEATURES.title !== false ? el(
                     PanelBody,
                     { title: 'Generate Title', initialOpen: true },
                     el('p', { className: 'generatetext-description' }, 'Generate or rewrite the post title based on your content.'),
@@ -265,7 +266,7 @@
                         loadingTitle ? el(Spinner, null) : null,
                         loadingTitle ? ' Generating...' : 'Generate Title'
                     )
-                )
+                ) : null
             )
         );
     }
@@ -276,6 +277,10 @@
     });
 
     // ========== Inline Rewrite (Floating toolbar button) ==========
+    if (FEATURES.rewrite === false) {
+        return; // Skip rewrite registration if disabled
+    }
+
     var REWRITE_FORMAT = 'generatetext/rewrite';
 
     registerFormatType(REWRITE_FORMAT, {
